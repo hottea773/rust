@@ -12,7 +12,7 @@ pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::sorted_map::{SortedIndexMultiMap, SortedMap};
 use rustc_error_messages::MultiSpan;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
@@ -623,7 +623,11 @@ impl<'hir> Generics<'hir> {
                 // We include bounds that come from a `#[derive(_)]` but point at the user's code,
                 // as we use this method to get a span appropriate for suggestions.
                 let bs = bound.span();
-                if bs.can_be_used_for_suggestions() { Some(bs.shrink_to_hi()) } else { None }
+                if bs.can_be_used_for_suggestions() {
+                    Some(bs.shrink_to_hi())
+                } else {
+                    None
+                }
             },
         )
     }
@@ -788,7 +792,7 @@ pub struct ParentedNode<'tcx> {
 /// Attributes owned by a HIR owner.
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
-    pub map: SortedMap<ItemLocalId, &'tcx [Attribute]>,
+    pub map: SortedMap<ItemLocalId, SortedIndexMultiMap<u32, Symbol, &'tcx Attribute>>,
     pub hash: Fingerprint,
 }
 
@@ -796,9 +800,15 @@ impl<'tcx> AttributeMap<'tcx> {
     pub const EMPTY: &'static AttributeMap<'static> =
         &AttributeMap { map: SortedMap::new(), hash: Fingerprint::ZERO };
 
+    // #[inline]
+    // pub fn get(&self, id: ItemLocalId) -> SortedIndexMultiMap<u32, Symbol, &'tcx Attribute> {
+    //     self.map.get(&id).copied().unwrap_or(&[])
+    // }
+
+    // MAP_TODO - change to be the above or similar.
     #[inline]
-    pub fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
-        self.map.get(&id).copied().unwrap_or(&[])
+    pub fn get(&self, _id: ItemLocalId) -> &'tcx [Attribute] {
+        &[]
     }
 }
 
@@ -1085,7 +1095,11 @@ impl DotDotPos {
     }
 
     pub fn as_opt_usize(&self) -> Option<usize> {
-        if self.0 == u32::MAX { None } else { Some(self.0 as usize) }
+        if self.0 == u32::MAX {
+            None
+        } else {
+            Some(self.0 as usize)
+        }
     }
 }
 
@@ -3504,7 +3518,11 @@ impl<'hir> Node<'hir> {
     /// Get the fields for the tuple-constructor,
     /// if this node is a tuple constructor, otherwise None
     pub fn tuple_fields(&self) -> Option<&'hir [FieldDef<'hir>]> {
-        if let Node::Ctor(&VariantData::Tuple(fields, _)) = self { Some(fields) } else { None }
+        if let Node::Ctor(&VariantData::Tuple(fields, _)) = self {
+            Some(fields)
+        } else {
+            None
+        }
     }
 }
 

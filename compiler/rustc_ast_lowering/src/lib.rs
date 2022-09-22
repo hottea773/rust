@@ -625,12 +625,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let local_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
         let trait_map = std::mem::take(&mut self.trait_map);
 
+        // This is what we have.
+        //let attrs: SortedMap<hir::ItemLocalId, &[Attribute]>;
+
+        //This is what we need
+        let outer_attr_map: SortedMap<
+            hir::ItemLocalId,
+            SortedIndexMultiMap<u32, Symbol, &Attribute>,
+        > = Default::default();
+
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
             // Verify that we do not store empty slices in the map.
             if attrs.is_empty() {
                 panic!("Stored empty attributes for {:?}", id);
             }
+
+            let inner_attr_map = SortedIndexMultiMap::from_iter(
+                attrs.into_iter().map(|attr| (attr.name_or_empty(), attr)),
+            );
+            outer_attr_map.insert(id, inner_attr_map);
         }
 
         bodies.sort_by_key(|(k, _)| *k);
@@ -648,10 +662,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let attrs = {
             let hash = self.tcx.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
-                attrs.hash_stable(&mut hcx, &mut stable_hasher);
+                outer_attr_map.hash_stable(&mut hcx, &mut stable_hasher);
                 stable_hasher.finish()
             });
-            hir::AttributeMap { map: attrs, hash }
+            hir::AttributeMap { map: outer_attr_map, hash }
         };
 
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
