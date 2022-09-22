@@ -2,6 +2,7 @@ use crate::hir::{ModuleItems, Owner};
 use crate::ty::{DefIdTree, TyCtxt};
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
@@ -550,8 +551,8 @@ impl<'hir> Map<'hir> {
         for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
                 for attrs in info.attrs.map.values() {
-                    for a in *attrs {
-                        visitor.visit_attribute(a)
+                    for a in attrs.iter() {
+                        visitor.visit_attribute(a.1)
                     }
                 }
             }
@@ -901,7 +902,7 @@ impl<'hir> Map<'hir> {
 
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
-    pub fn attrs(self, id: HirId) -> &'hir [ast::Attribute] {
+    pub fn attrs(self, id: HirId) -> SortedIndexMultiMap<u32, Symbol, &'hir ast::Attribute> {
         self.tcx.hir_attrs(id.owner).get(id.local_id)
     }
 

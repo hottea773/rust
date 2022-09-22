@@ -52,7 +52,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::sorted_map::{SortedIndexMultiMap, SortedMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagnosticArgFromDisplay, Handler, StashKey};
@@ -625,27 +625,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let local_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
         let trait_map = std::mem::take(&mut self.trait_map);
 
-        // This is what we have.
-        //let attrs: SortedMap<hir::ItemLocalId, &[Attribute]>;
-
-        //This is what we need
-        let outer_attr_map: SortedMap<
-            hir::ItemLocalId,
-            SortedIndexMultiMap<u32, Symbol, &Attribute>,
-        > = Default::default();
-
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
             // Verify that we do not store empty slices in the map.
             if attrs.is_empty() {
                 panic!("Stored empty attributes for {:?}", id);
             }
-
-            let inner_attr_map = SortedIndexMultiMap::from_iter(
-                attrs.into_iter().map(|attr| (attr.name_or_empty(), attr)),
-            );
-            outer_attr_map.insert(id, inner_attr_map);
         }
+
+        let outer_attr_map: SortedMap<
+            hir::ItemLocalId,
+            SortedIndexMultiMap<u32, Symbol, &Attribute>,
+        > = attrs
+            .iter()
+            .map(|(id, attrs)| {
+                (
+                    *id,
+                    SortedIndexMultiMap::from_iter(
+                        attrs.into_iter().map(|attr| (attr.name_or_empty(), attr)),
+                    ),
+                )
+            })
+            .collect();
 
         bodies.sort_by_key(|(k, _)| *k);
         let bodies = SortedMap::from_presorted_elements(bodies);

@@ -28,10 +28,12 @@ pub use assoc::*;
 pub use generics::*;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::Attribute;
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::{Interned, WithStableHash};
+use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
@@ -2354,7 +2356,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     // FIXME(@lcnr): Remove this function.
-    pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [ast::Attribute] {
+    pub fn get_attrs_unchecked(
+        self,
+        did: DefId,
+    ) -> SortedIndexMultiMap<u32, Symbol, &'tcx Attribute> {
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.hir().local_def_id_to_hir_id(did))
         } else {
@@ -2364,7 +2369,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Gets all attributes with the given name.
     pub fn get_attrs(self, did: DefId, attr: Symbol) -> ty::Attributes<'tcx> {
-        let filter_fn = move |a: &&ast::Attribute| a.has_name(attr);
+        let filter_fn =
+            move |a: &SortedIndexMultiMap<u32, Symbol, &'tcx Attribute>| a.has_name(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else if cfg!(debug_assertions) && rustc_feature::is_builtin_only_local(attr) {

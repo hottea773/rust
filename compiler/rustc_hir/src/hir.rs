@@ -623,11 +623,7 @@ impl<'hir> Generics<'hir> {
                 // We include bounds that come from a `#[derive(_)]` but point at the user's code,
                 // as we use this method to get a span appropriate for suggestions.
                 let bs = bound.span();
-                if bs.can_be_used_for_suggestions() {
-                    Some(bs.shrink_to_hi())
-                } else {
-                    None
-                }
+                if bs.can_be_used_for_suggestions() { Some(bs.shrink_to_hi()) } else { None }
             },
         )
     }
@@ -800,16 +796,16 @@ impl<'tcx> AttributeMap<'tcx> {
     pub const EMPTY: &'static AttributeMap<'static> =
         &AttributeMap { map: SortedMap::new(), hash: Fingerprint::ZERO };
 
-    // #[inline]
-    // pub fn get(&self, id: ItemLocalId) -> SortedIndexMultiMap<u32, Symbol, &'tcx Attribute> {
-    //     self.map.get(&id).copied().unwrap_or(&[])
-    // }
-
-    // MAP_TODO - change to be the above or similar.
     #[inline]
-    pub fn get(&self, _id: ItemLocalId) -> &'tcx [Attribute] {
-        &[]
+    pub fn get(&self, id: ItemLocalId) -> SortedIndexMultiMap<u32, Symbol, &'tcx Attribute> {
+        self.map.get(&id).map(|x| x.to_owned()).unwrap_or(SortedIndexMultiMap::new())
     }
+
+    // // MAP_TODO - change to be the above or similar.
+    // #[inline]
+    // pub fn get(&self, _id: ItemLocalId) -> &'tcx [Attribute] {
+    //     &[]
+    // }
 }
 
 /// Map of all HIR nodes inside the current owner.
@@ -1095,11 +1091,7 @@ impl DotDotPos {
     }
 
     pub fn as_opt_usize(&self) -> Option<usize> {
-        if self.0 == u32::MAX {
-            None
-        } else {
-            Some(self.0 as usize)
-        }
+        if self.0 == u32::MAX { None } else { Some(self.0 as usize) }
     }
 }
 
@@ -3518,11 +3510,7 @@ impl<'hir> Node<'hir> {
     /// Get the fields for the tuple-constructor,
     /// if this node is a tuple constructor, otherwise None
     pub fn tuple_fields(&self) -> Option<&'hir [FieldDef<'hir>]> {
-        if let Node::Ctor(&VariantData::Tuple(fields, _)) = self {
-            Some(fields)
-        } else {
-            None
-        }
+        if let Node::Ctor(&VariantData::Tuple(fields, _)) = self { Some(fields) } else { None }
     }
 }
 
