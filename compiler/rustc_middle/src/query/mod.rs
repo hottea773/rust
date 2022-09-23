@@ -1135,6 +1135,7 @@ rustc_queries! {
     /// Do not use this directly, use `tcx.get_attrs` instead.
     query item_attrs(def_id: DefId) -> SortedIndexMultiMap<u32, Symbol, &'tcx ast::Attribute>  {
         desc { |tcx| "collecting attributes of `{}`", tcx.def_path_str(def_id) }
+        arena_cache
         separate_provide_extern
     }
 

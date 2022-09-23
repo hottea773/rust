@@ -2109,7 +2109,7 @@ impl<'tcx> FieldDef {
     }
 }
 
-pub type Attributes<'tcx> = impl Iterator<Item = &'tcx ast::Attribute>;
+pub type Attributes<'tcx> = impl Iterator<Item = &'tcx &'tcx ast::Attribute>;
 #[derive(Debug, PartialEq, Eq)]
 pub enum ImplOverlapKind {
     /// These impls are always allowed to overlap.
@@ -2363,20 +2363,21 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.hir().local_def_id_to_hir_id(did))
         } else {
-            self.item_attrs(did)
+            *self.item_attrs(did)
         }
     }
 
     /// Gets all attributes with the given name.
     pub fn get_attrs(self, did: DefId, attr: Symbol) -> ty::Attributes<'tcx> {
-        let filter_fn =
-            move |a: &SortedIndexMultiMap<u32, Symbol, &'tcx Attribute>| a.has_name(attr);
+        // let filter_fn =
+        //     move |a: &SortedIndexMultiMap<u32, Symbol, &'tcx Attribute>| a.has_name(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
-        } else if cfg!(debug_assertions) && rustc_feature::is_builtin_only_local(attr) {
+            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).get_by_key(attr)
+        } else
+        if cfg!(debug_assertions) && rustc_feature::is_builtin_only_local(attr) {
             bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
         } else {
-            self.item_attrs(did).iter().filter(filter_fn)
+            self.item_attrs(did).get_by_key(attr)
         }
     }
 
