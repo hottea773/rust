@@ -12,7 +12,7 @@ pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::sorted_map::{SortedIndexMultiMap, SortedMap};
 use rustc_error_messages::MultiSpan;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
@@ -788,7 +788,7 @@ pub struct ParentedNode<'tcx> {
 /// Attributes owned by a HIR owner.
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
-    pub map: SortedMap<ItemLocalId, &'tcx [Attribute]>,
+    pub map: SortedMap<ItemLocalId, SortedIndexMultiMap<u32, Symbol, &'tcx Attribute>>,
     pub hash: Fingerprint,
 }
 
@@ -797,9 +797,15 @@ impl<'tcx> AttributeMap<'tcx> {
         &AttributeMap { map: SortedMap::new(), hash: Fingerprint::ZERO };
 
     #[inline]
-    pub fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
-        self.map.get(&id).copied().unwrap_or(&[])
+    pub fn get(&self, id: ItemLocalId) -> SortedIndexMultiMap<u32, Symbol, &'tcx Attribute> {
+        self.map.get(&id).map(|x| x.to_owned()).unwrap_or(SortedIndexMultiMap::new())
     }
+
+    // // MAP_TODO - change to be the above or similar.
+    // #[inline]
+    // pub fn get(&self, _id: ItemLocalId) -> &'tcx [Attribute] {
+    //     &[]
+    // }
 }
 
 /// Map of all HIR nodes inside the current owner.
